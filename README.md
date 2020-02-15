@@ -1,12 +1,11 @@
 # README
 
-<https://usf-cs360-spring2020.github.io/template-bulma/>
+<http://127.0.0.1:5500/index.html>
 
 ![Profile Image](profile.png)
 
-**Name:** Your Name  
-**Email:** <username@dons.usfca.edu>
+**Name:** Alejandro Garcia
+**Email:** <argarcia6@dons.usfca.edu>
 
-This is a template website using [Bulma](https://bulma.io/), [FontAwesome](https://origin.fontawesome.com/) for icons, and [Github Pages](). Designed to be modified (including this README file).
+ I am currently a Undergraduate CS student in my last semester in Unversity of San Franscio. Some fun facts about myself is that I was born in Miami, Flordia and my hobbies are photography/film making and gaming. Come check out my linkedin, and Github Pages.
 
-*Template based on: <https://github.com/usf-cs360-spring2020/template-bulma>*
