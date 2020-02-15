@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<style type="text/css">
+
+.line {
+    fill: none;
+    stroke: #0000005b;
+    stroke-width: 3;
+}
+  
+.overlay {
+  fill: none;
+  pointer-events: all;
+}
+
+.dot {
+    fill: #00f7ff;
+    stroke: #fff;
+}
+
+.outlier {
+    fill: #0011ff;
+    stroke: #fff;
+}
+
+text.axis-title{
+  font-size: 12px;
+  font-weight: bold;
+}
+
+
+svg{
+  width: 960px;
+  height: 500px;
+}
+
+div.tooltip-donut {
+     position: absolute;
+     text-align: center;
+     padding: .5rem;
+     background: #FFFFFF;
+     color: #313639;
+     border: 1px solid #313639;
+     border-radius: 8px;
+     pointer-events: none;
+     font-size: 1.3rem;
+}
+
+</style>
+<body>
+  <h2>2019 SFO Passenger Count Anomaly</h2>
+  <svg></svg>
+  <p>The trends of  the sum of Passenger Count for the 2019 monthly reports in SFO. For legend, sum of Passenger Count: <b style="color:#0011ff";> Dark blue</b> determines if it is an outlier and <b style="color:#00f7ff";>light blue </b> means it is regular data.</p>
+  <p>Data acquired from <a href="https://data.sfgov.org/Transportation/Air-Traffic-Passenger-Statistics/rkru-6vcg/data">Sfgov.org/Transportation/Air-Traffic</a> on February 5, 2020.</p>
+
+</body>
+
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script>
+
+let csv = 'Air_Traffic_Passenger_Statistics(1).csv';
+let parseDate = d3.timeParse('%Y%m');
+
+
+let config = {
+  'svg': {},
+  'margin': {},
+  'plot': {}
+};
+
+config.svg.height = 450;
+config.svg.width = config.svg.height * 1.618; 
+
+config.margin.top = 10;
+config.margin.right = 10;
+config.margin.bottom = 20;
+config.margin.left = 80;
+
+// config.plot.x = config.margin.left;
+// config.plot.y = config.margin.top;
+// config.plot.width = config.svg.width - config.margin.left - config.margin.right;
+// config.plot.height = config.svg.height - config.margin.top - config.margin.bottom;
+
+
+var margin = {top: 10, right: 10, bottom: 20, left: 80  }
+  , width = 850  
+  , height = 400; 
+
+
+var xScale = d3.scaleBand()
+    .range([0, width]); 
+
+var yScale = d3.scaleLinear()
+    .range([height, 0]); 
+
+// 7. d3's line generator
+var line = d3.line()
+    .x(function(d) { return xScale(d.Activity_Period); }) // set the x values for the line generator
+    .y(function(d) { return yScale(d.Passenger_Count); }) // set the y values for the line generator 
+
+  
+
+function dateFormatter(d) {
+  d = parseDate(d).toLocaleString('default', { month: 'long' });
+  return d;
+}
+  
+function regionFormatter(d) {
+  let text = d;
+  return text;
+}
+
+
+d3.csv(csv).then(function(data) {
+ let res= [];
+ let temp = data;
+
+  temp.forEach(function(d) {
+    temp.forEach(function(other) {
+      var found = ((d["Activity Period"] === other["Activity Period"]) && (d["GEO Summary"] != other["GEO Summary"]));
+
+      if (found){
+        var newObj = Object.assign({}, d);       
+        newObj["Passenger Count"] = +d["Passenger Count"] + (+other["Passenger Count"]);                 
+        newObj["Activity Period"] = d["Activity Period"];
+
+        res.push(newObj);                        
+         
+        temp = temp.filter(function(item) {
+          return item !== d;
+        })
+
+        temp = temp.filter(function(item) {
+          return item !== other;
+        })
+
+      }
+    })    
+  });
+  data = res;
+
+	data.forEach(function(d) {
+		d.Activity_Period = +d["Activity Period"];
+		d.Passenger_Count = +d["Passenger Count"];
+  })
+
+
+  data = data.sort(function(a, b) {
+      return a.Activity_Period - b.Activity_Period;
+  })
+
+  //console.log(data);
+
+  let getMean = function (data) {
+      return data.reduce(function (a, b) {
+          return Number(a) + Number(b);
+      }) / data.length;
+  };
+
+  let getSD = function (data) {
+    let m = getMean(data);
+    return Math.sqrt(data.reduce(function (sq, n) {
+            return sq + Math.pow(n - m, 2);
+        }, 0) / (data.length - 1));
+};
+
+  
+  let regions = data.map(row => row.Passenger_Count);
+
+  let dates = data.map(value => value.Activity_Period);
+
+  regions = regions.sort(function(a, b){
+    return a - b;
+  })
+
+
+  let avg = regions.reduce((a,b) => a + b, 0) / regions.length;
+  // console.log(avg);
+
+  let upper = avg + getSD(regions);
+  // console.log(upper);
+  let lower = avg - getSD(regions);
+  //console.log(lower);
+
+  function out(d){
+    return (d.Passenger_Count > upper || d.Passenger_Count < lower);
+}
+
+  // console.log(regions);
+  // console.log(dates);
+
+  xScale.domain(dates);
+  yScale.domain([0, d3.max(regions)]);
+
+
+// Add the SVG to the page and employ #2
+var svg = d3.select('body').select('svg')
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  function midpoint(range) {
+    //change this later
+    return range[0] + (range[1] - range[0]) / 2.0;
+  }
+
+  function translate(x, y) {
+  return 'translate(' + String(x) + ',' + String(y) + ')';
+}
+
+
+  const xMiddle = margin.left + midpoint(xScale.range());
+  const yMiddle = margin.top + midpoint(yScale.range());
+
+  const xTitle = svg.append('text')
+    .attr('class', 'axis-title')
+    .text('Months');
+
+  xTitle.attr('x', xMiddle - 80);
+  xTitle.attr('y', height);
+  xTitle.attr('dy', 45);
+  xTitle.attr('text-anchor', 'middle');
+
+
+  const yGroup = svg.append('g');
+
+  yGroup.attr('transform', translate(-50, yMiddle));
+
+  const yTitle = yGroup.append('text')
+    .attr('class', 'axis-title')
+    .text('Passenger Count');
+
+  // keep x, y at 0, 0 for rotation around the origin
+  yTitle.attr('x', 0);
+  yTitle.attr('y', 0);
+
+  yTitle.attr('dy', '1.75ex');
+  yTitle.attr('text-anchor', 'middle');
+  yTitle.attr('transform', 'rotate(-90)');
+
+// Call the x axis in a group tag
+svg.append("g")
+    .attr("class", "x axis")
+    .attr("transform", "translate(0," + height + ")")
+    .call(d3.axisBottom(xScale).tickFormat(dateFormatter)); // Create an axis component with d3.axisBottom
+
+// Call the y axis in a group tag
+svg.append("g")
+    .attr("class", "y axis")
+    .call(d3.axisLeft(yScale).ticks(6,"f").tickFormat(d3.formatPrefix(".0",1e6))); // Create an axis component with d3.axisLeft
+
+//Append the path, bind the data, and call the line generator 
+
+var div = d3.select("body").append("div")
+     .attr("class", "tooltip-donut")
+     .style("opacity", 0);
+
+
+svg.append("path")
+    .datum(data) 
+    .attr("class", "line") 
+    .attr("transform", "translate(50)")
+    .attr("d", line); 
+
+svg.selectAll("rect")
+    .data(data)
+    .enter()
+    .append("rect")
+    .attr("x", xScale)
+    .attr("y", 20)
+    .attr("width", width)
+    .attr("height", 95)
+    .style("fill", "#d5d6e711");
+
+// Appends a circle for each datapoint 
+svg.selectAll(".dot")
+    .data(data)
+    .enter().append("circle") 
+    .attr("class", 
+    function(d) { 
+        if(out(d) == true){
+        return "outlier";
+      }
+      else {
+        return "dot";
+      }
+    }) 
+    .attr("transform", "translate(50)")
+    .attr("cx", function(d, i) { return xScale(d.Activity_Period) })
+    .attr("cy", function(d) { return yScale(d.Passenger_Count) })
+    .attr("r", 5)
+      .on("mouseover", function(d) { 
+  			console.log(d)
+        d3.select(this).transition()
+               .duration('50')
+               .attr('opacity', '.85');
+
+        div.transition()
+               .duration(50)
+               .style("opacity", 1);
+      
+      let format = d3.format(",");
+      
+      div.html(format(d.Passenger_Count))
+          .style("left", (d3.event.pageX + 10) + "px")
+          .style("top", (d3.event.pageY - 15) + "px");
+
+		})
+      .on("mouseout", function(d) {d3.select(this).transition()
+               .duration('50')
+               .attr('opacity', '1');
+        div.transition()
+               .duration('50')
+               .style("opacity", 0);
+    })
+})
+</script>
