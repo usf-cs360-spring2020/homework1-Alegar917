@@ -2,7 +2,7 @@
 
 <https://usf-cs360-spring2020.github.io/homework1-Alegar917/>
 
-![Profile Image](profile.png)
+![Profile Image](index.png)
 
 **Name:** Alejandro Garcia
 **Email:** <argarcia6@dons.usfca.edu>
